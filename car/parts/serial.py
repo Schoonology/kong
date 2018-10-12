@@ -6,8 +6,6 @@ class SerialController():
                 '/dev/ttyS0',
                 baudrate=9600
         )
-        self.recording = False
-        self.mode = 'user'
         self.steering = 0.0
         self.throttle = 0.0
 
@@ -27,6 +25,5 @@ class SerialController():
             except ValueError:
                 pass
 
-    def run_threaded(self, img_arr=None):
-        self.img_arr = img_arr
-        return self.steering, self.throttle, self.mode, self.recording
+    def run_threaded(self):
+        return self.steering, self.throttle

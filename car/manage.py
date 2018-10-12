@@ -49,8 +49,8 @@ def drive(cfg, model_path=None, use_joystick=False, use_chaos=False):
     ctr = SerialController()
 
     V.add(ctr,
-          inputs=['cam/image_array'],
-          outputs=['user/angle', 'user/throttle', 'c', 'd'],
+          inputs=[],
+          outputs=['user/angle', 'user/throttle'],
           threaded=True)
 
     V.add(LocalWebController(use_chaos=use_chaos),
