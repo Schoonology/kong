@@ -9,6 +9,7 @@ class SerialController():
         self.steering = 0.0
         self.throttle = 0.0
 
+    # Called once, in a background thread, when the car has started.
     def update(self):
         while True:
             line = self.conn.readline().strip()
@@ -25,5 +26,6 @@ class SerialController():
             except ValueError:
                 pass
 
+    # Called repeated in the main thread to read outputs.
     def run_threaded(self):
         return self.steering, self.throttle
