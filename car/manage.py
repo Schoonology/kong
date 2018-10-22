@@ -50,12 +50,12 @@ def drive(cfg, model_path=None, use_joystick=False, use_chaos=False):
 
     V.add(ctr,
           inputs=[],
-          outputs=['user/angle', 'user/throttle'],
+          outputs=['user/angle', 'user/throttle', 'user/mode'],
           threaded=True)
 
     V.add(LocalWebController(use_chaos=use_chaos),
             inputs=['cam/image_array'],
-            outputs=['a', 'b', 'user/mode', 'recording'],
+            outputs=['a', 'b', 'c', 'recording'],
             threaded=True)
 
     # See if we should even run the pilot module.

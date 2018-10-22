@@ -8,6 +8,7 @@ class SerialController():
         )
         self.steering = 0.0
         self.throttle = 0.0
+        self.mode = 'user'
 
     # Called once, in a background thread, when the car has started.
     def update(self):
@@ -23,9 +24,15 @@ class SerialController():
                     self.throttle = float(val)
                 if key == b'1':
                     self.steering = float(val)
+                if key == b'2':
+                    if val == b'1':
+                        self.mode = 'auto'
+                    else:
+                        self.mode = 'user'
+                    print('Switching mode to {0}'.format(self.mode))
             except ValueError:
                 pass
 
     # Called repeated in the main thread to read outputs.
     def run_threaded(self):
-        return self.steering, self.throttle
+        return self.steering, self.throttle, self.mode
