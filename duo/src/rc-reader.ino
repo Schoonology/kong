@@ -16,7 +16,8 @@ enum Mode {
   SCAN_STOP
 };
 
-volatile Mode mode = DRIVING;
+bool button_down = false;
+Mode mode = DRIVING;
 float throttle;
 float steering;
 
@@ -44,12 +45,6 @@ void switch_modes() {
     Serial.println("DRIVING");
     mode = SCAN_STOP;
   }
-
-  attachInterrupt(SWITCH_PIN, reset_switch, FALLING);
-}
-
-void reset_switch() {
-  attachInterrupt(SWITCH_PIN, switch_modes, RISING);
 }
 
 /**
@@ -66,13 +61,20 @@ void setup() {
 
   Serial1.begin(9600);
 
-  attachInterrupt(SWITCH_PIN, switch_modes, RISING);
+  button_down = false;
 }
 
 /**
  * Run continuously.
  */
 void loop() {
+  if (digitalRead(SWITCH_PIN) == HIGH) {
+    button_down = true;
+  } else if (button_down) {
+    button_down = false;
+    switch_modes();
+  }
+
   switch (mode) {
     case DRIVING:
       throttle = readChannel(THROTTLE_PIN);
@@ -86,12 +88,14 @@ void loop() {
       break;
     case SCAN_START:
       digitalWrite(LED_PIN, HIGH);
+      Serial1.printf("2:1\n");
       start_scan();
       mode = SCANNING;
       break;
     case SCAN_STOP:
       digitalWrite(LED_PIN, LOW);
       digitalWrite(BUZZER_PIN, LOW);
+      Serial1.printf("2:0\n");
       stop_scan();
       mode = DRIVING;
       break;
