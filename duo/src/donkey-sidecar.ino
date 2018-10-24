@@ -9,6 +9,7 @@
 // We do not need the Particle Cloud, so disable it.
 SYSTEM_MODE(MANUAL);
 
+// Type for device modes.
 enum Mode {
   DRIVING = 0,
   SCAN_START,
@@ -16,13 +17,12 @@ enum Mode {
   SCAN_STOP
 };
 
-bool button_down = false;
-Mode mode = DRIVING;
+bool modeSwitchDown = false;
+Mode deviceMode = DRIVING;
+uint8_t targetAddress[6] = { 0x48, 0x78, 0x63, 0xF6, 0xD2, 0xE3 };
+
 float throttle;
 float steering;
-
-void start_scan();
-void stop_scan();
 
 /**
  * Returns a [-1.0, 1.0] control value based on the PWM signal input on `pin`.
@@ -37,14 +37,46 @@ float readChannel(int pin) {
   return constrain((duration - DURATION_REST) / DURATION_AMPLITUDE, -1.0f, 1.0);
 }
 
+/**
+ * Switches the active mode from SCANNING to DRIVING and vice-versa. [Uses
+ * transitional states, SCAN_START and SCAN_STOP.]
+ */
 void switch_modes() {
-  if (mode == DRIVING) {
+  if (deviceMode == DRIVING) {
     Serial.println("SCANNING");
-    mode = SCAN_START;
+    deviceMode = SCAN_START;
   } else {
     Serial.println("DRIVING");
-    mode = SCAN_STOP;
+    deviceMode = SCAN_STOP;
   }
+}
+
+/**
+ * Handler for Bluetooth scan results.
+ */
+void reportCallback(advertisementReport_t *report) {
+  if (memcmp(report->peerAddr, targetAddress, 6) == 0) {
+    digitalWrite(BUZZER_PIN, HIGH);
+  }
+}
+
+/**
+ * Starts scanning for nearby Bluetooth devices in a background thread.
+ */
+void startBluetoothScanning() {
+  ble.init();
+
+  ble.onScanReportCallback(reportCallback);
+  ble.setScanParams(0x00, 0x0060, 0x0030);
+  ble.startScanning();
+}
+
+/**
+ * Stops the Bluetooth scan and destroys the background thread.
+ */
+void stopBluetoothScanning() {
+  ble.stopScanning();
+  ble.deInit();
 }
 
 /**
@@ -61,7 +93,7 @@ void setup() {
 
   Serial1.begin(9600);
 
-  button_down = false;
+  modeSwitchDown = false;
 }
 
 /**
@@ -69,13 +101,13 @@ void setup() {
  */
 void loop() {
   if (digitalRead(SWITCH_PIN) == HIGH) {
-    button_down = true;
-  } else if (button_down) {
-    button_down = false;
+    modeSwitchDown = true;
+  } else if (modeSwitchDown) {
+    modeSwitchDown = false;
     switch_modes();
   }
 
-  switch (mode) {
+  switch (deviceMode) {
     case DRIVING:
       throttle = readChannel(THROTTLE_PIN);
       steering = readChannel(STEERING_PIN) * -1; // Inverted: left is -1
@@ -88,40 +120,18 @@ void loop() {
       break;
     case SCAN_START:
       digitalWrite(LED_PIN, HIGH);
+      startBluetoothScanning();
+      deviceMode = SCANNING;
+
       Serial1.printf("2:1\n");
-      start_scan();
-      mode = SCANNING;
       break;
     case SCAN_STOP:
       digitalWrite(LED_PIN, LOW);
       digitalWrite(BUZZER_PIN, LOW);
+      stopBluetoothScanning();
+      deviceMode = DRIVING;
+
       Serial1.printf("2:0\n");
-      stop_scan();
-      mode = DRIVING;
       break;
   }
-}
-
-uint8_t targetAddress[6] = { 0x48, 0x78, 0x63, 0xF6, 0xD2, 0xE3 };
-
-void reportCallback(advertisementReport_t *report) {
-  if (memcmp(report->peerAddr, targetAddress, 6) == 0) {
-    digitalWrite(BUZZER_PIN, HIGH);
-  }
-}
-
-void start_scan() {
-  ble.init();
-
-  ble.onScanReportCallback(reportCallback);
-
-  // Set scan parameters.
-  ble.setScanParams(0x00, 0x0060, 0x0030);
-
-  ble.startScanning();
-}
-
-void stop_scan() {
-  ble.stopScanning();
-  ble.deInit();
 }
